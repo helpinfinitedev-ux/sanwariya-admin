@@ -6,7 +6,7 @@ import { AuthService } from "../auth/index.service";
 
 const { CancelToken } = axios;
 
-let source = CancelToken.source();
+const source = CancelToken.source();
 
 axios.defaults.baseURL = config.API_URL;
 axios.defaults.data = {
@@ -50,12 +50,13 @@ axios.interceptors.response.use(
     toast.error(message);
 
     if (unauthorizedMessages.includes(message) || status === 401 || code === 401 || error === "Unauthorized") {
+      console.log(message);
       AuthService.logout();
 
       source.cancel(message);
 
       setTimeout(() => {
-        source = CancelToken.source();
+        // source = CancelToken.source();
 
         if (window.location.pathname !== "/login") window.location.assign("/login");
       }, 300);
@@ -72,7 +73,7 @@ const http = {
   delete: axios.delete,
   getUserBaseUrl: () => config.API_URL,
   setJWT: () => {
-    axios.defaults.headers.common.authorization = localStorage.getItem("token") || "";
+    axios.defaults.headers.common.authorization = "Bearer " + localStorage.getItem("token") || "";
   },
   setMultiPart: () => ({ headers: { "Content-Type": "multipart/form-data" } }),
   setBaseUrl: (url: string) => {
