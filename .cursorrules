@@ -1,0 +1,281 @@
+# Project-Wide Engineering Guidelines
+
+_For AI Agents Working on This Codebase (Redux Toolkit + shadcn/ui)_
+
+---
+
+## 1. Core Principles
+
+1. **Consistency > Creativity**
+
+   - Do not introduce new patterns if an existing pattern already exists in the repo.
+   - Match folder structure, naming, and code style already used.
+
+2. **Strict UI Standardization**
+
+   - Always use **shadcn/ui components**.
+   - Styling changes must be done via:
+     - `variant` (preferred), or
+     - `className` (only for small, local tweaks).
+   - Do NOT create raw UI primitives (`<button>`, `<input>`, `<select>`, etc.) unless wrapped by shadcn.
+
+3. **Typography, Fonts, Colors**
+
+   - Follow project tokens and configuration:
+     - `tailwind.config.*`
+     - `app/globals.css`
+     - `app/layout.tsx` (fonts)
+     - `components/ui/*` (shadcn theme usage)
+   - Do not invent new font families, font scales, or color palettes.
+   - Do not hardcode hex colors unless the repo already uses them intentionally.
+
+4. **Modularity / Readability**
+   - Files over ~150 lines should be split into smaller components/modules.
+   - Each component should have a single responsibility.
+
+---
+
+## 2. Folder Structure Rules
+
+- **UI components**: `app/<route>/components/` or `app/<route>/_components/` (match existing repo convention)
+- **API calls (including mocks)**: `services/`
+- **Redux Toolkit slices**: `store/slices/`
+
+Never mix concerns (no API fetching logic inside UI components).
+
+---
+
+## 3. UI Rules (Mandatory)
+
+### 3.1 Always Use shadcn/ui Components
+
+Allowed:
+
+- `Button`, `Card`, `Input`, `Select`, `Dialog`, `Sheet`, `Badge`, `Skeleton`, etc.
+
+Not allowed:
+
+- Raw `<button>`
+- Raw `<input>`
+- Custom duplicated primitives that already exist in shadcn
+
+### 3.2 Button Customization Rule
+
+If button styling differs:
+
+**Preferred**: Add a new `variant` in `components/ui/button.tsx` (CVA).  
+Usage:
+
+- `<Button variant="brand" />`
+
+**Allowed**: Use `className` only for small local tweaks:
+
+- `<Button className="w-full" />`
+
+Never:
+
+- Duplicate button implementation
+- Create a second Button component
+- Inline styles
+
+---
+
+## 4. State Management Rules (Redux Toolkit)
+
+This project uses **Redux Toolkit** for slices.
+
+### 4.1 Async Data Must Use RTK
+
+For any async domain data:
+
+1. Create service call in `services/`
+2. Create loading state in slice with `loading: boolean`
+3. Handle `loading` state
+4. UI dispatches action and selects state
+
+Never:
+
+- Fetch directly inside component without service abstraction
+- Store server data in component local state if it belongs to the domain/store
+- Introduce React Query/SWR for server state if Redux Toolkit is already used (unless explicitly instructed)
+
+### 4.2 Slice State Shape (Standard)
+
+Each slice must contain:
+
+- suitable name for the data
+- loading:boolean
+- error: string | null (optional)
+
+Example:
+
+- products: []
+- loading: false
+- error: null (optional)
+
+---
+
+## 5. Mock API Standard (Services Layer)
+
+When backend is unavailable, always use a **mock service**.
+
+Rules:
+
+- Mock must live in `services/`
+- Must simulate latency (`sleep` / `setTimeout`)
+- Must return a stable, deterministic shape
+- UI must not directly import mock JSON arrays
+
+Example (pattern only):
+
+- `services/collections.service.ts` → `getCollections(): Promise<Collection[]>`
+
+---
+
+## 6. Redux Toolkit Slice Standard (Detailed)
+
+Every slice must:
+
+- Export the reducer as default
+- Export async thunk(s)
+- Export any synchronous reducers (optional)
+- Handle errors in `rejected`
+
+Must follow repo naming conventions:
+
+- `collectionsSlice.ts`
+- Action: `fetchProducts`
+
+---
+
+## 7. Page Architecture Standard
+
+Every page should be structured like:
+
+- `page.tsx` → thin route entry
+- `_components/` → UI composition
+- Container component handles dispatch and state selection
+
+Recommended layout:
+
+- Header component
+- Content grid/list component
+- Loading component (Skeletons)
+- Error component (Retry button)
+
+### page.tsx Responsibilities
+
+Allowed:
+
+- Render container component
+
+Not allowed:
+
+- Large UI blocks
+- Fetch calls
+- Business logic
+
+---
+
+## 8. Styling Rules
+
+- Tailwind only (unless repo uses additional styling system intentionally).
+- Use existing design tokens and utilities:
+  - `bg-background`, `text-muted-foreground`, etc. (if present)
+- No inline styles
+- No random hex colors
+- No arbitrary spacing unless it matches existing project style
+
+---
+
+## 9. Typography Rules
+
+- Follow existing font family and text scale defined in the project.
+- Do not invent new heading scales.
+- Maintain consistent hierarchy:
+  - Title
+  - Subtitle
+  - Body
+  - Caption
+
+---
+
+## 10. Component Splitting Rule
+
+Split when:
+
+- File > ~150 lines
+- More than 3 UI sections
+- Contains multiple conditional blocks (loading/error/empty/success)
+- Contains reusable UI
+
+---
+
+## 11. Async UI Handling Pattern (Required)
+
+All async UIs must handle:
+
+- Loading
+- Error
+- Empty
+- Success
+
+Never:
+
+- Render nothing on failure
+- Hide errors silently
+- Assume data is always present
+
+---
+
+## 12. Naming Conventions
+
+- Components: `CollectionsHeader`, `CollectionsGrid`, `CollectionCard`
+- Slices: `slices/<folder>/index.ts`
+- Services: `services/<folder>/index.service.ts`
+
+Avoid:
+
+- `helpers.ts` dumping
+- `utils.ts` dumping
+- unclear names like `data.ts`
+
+---
+
+## 13. Strict Do-Not List
+
+AI Agent MUST NOT:
+
+- Introduce new design systems
+- Change global theme tokens
+- Replace Redux Toolkit with other state libs
+- Fetch directly in UI components
+- Duplicate shadcn primitives
+- Refactor unrelated files without instruction
+
+---
+
+## 14. Standard Page Template (Redux Toolkit)
+
+```tsx
+"use client";
+
+export default function CollectionsPage() {
+  const dispatch = useAppDispatch();
+  const { items, status, error } = useAppSelector((s) => s.collections);
+
+  useEffect(() => {
+    if (status === "idle") dispatch(fetchCollections());
+  }, [status, dispatch]);
+
+  if (status === "loading") return <LoadingState />;
+  if (status === "failed") return <ErrorState message={error ?? "Failed"} />;
+
+  return (
+    <div className="container mx-auto py-8">
+      <PageHeader />
+      <CollectionsGrid items={items} />
+    </div>
+  );
+}
+```
